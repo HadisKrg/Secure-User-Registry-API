@@ -1,0 +1,67 @@
+Scenario
+You are building a Spring Boot REST API called Secure User Registry API that handles user registration and authentication.
+Each User has:
+• id (auto-generated)
+• username (unique, 5–20 characters, alphanumeric + underscore only)
+• password (hashed with BCrypt before storage — never stored as plain text)
+• fullName (max 100 characters)
+• age (between 0 and 120)
+API clients (via Postman) can:
+• Register a new user at POST /auth/signup — public (no authentication required)
+• List all users at GET /users — protected (authentication required; response must NOT expose passwords)
+• Get their own profile at GET /auth/me — protected
+• Check the service is alive at GET /health — public
+Data is stored in a PostgreSQL database.
+
+Project Setup Create a Spring Boot project using start.spring.io with dependencies: • Spring Web • Spring Data JPA • Spring Security • Validation • PostgreSQL Driver • Lombok Package structure: text
+
+
+
+
+com.securevault
+├── config
+├── controller
+├── dto
+├── exception
+├── model
+├── repository
+└── service
+
+Configuration — application.properties Create src/main/resources/application.properties with: Server: • server.port=8085 (must NOT be the default 8080 — this proves you know how to change it) PostgreSQL Datasource: • spring.datasource.url=jdbc:postgresql://localhost:5432/securedb • spring.datasource.username=postgres (or your PostgreSQL user) • spring.datasource.password=yourpassword • spring.datasource.driver-class-name=org.postgresql.Driver JPA / Hibernate: • spring.jpa.hibernate.ddl-auto=update • spring.jpa.show-sql=true • spring.jpa.properties.hibernate.format_sql=true • spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect PostgreSQL Setup: • Before running the application, create a database named securedb in your PostgreSQL instance
+You can do this via psql or pgAdmin: CREATE DATABASE securedb;
+4. Entity — UserInfoDao
+Create UserInfoDao in package com.securevault.model with:
+• @Entity
+• A class-level @Table annotation that:
+o Explicitly names the table APP_USER (not user)
+o Declares a named unique constraint on the username column (name it uk_app_user_username)
+• Lombok annotations for getters, setters, no-args constructor, all-args constructor, and builder
+• Fields:
+o id: Long — primary key, auto-generated using IDENTITY strategy
+o username: String — must be non-null, max length 20
+o password: String — must be non-null — stores the BCrypt hash, not the plain-text password
+o fullName: String — must be non-null, max length 100
+o age: short — must be non-null
+Two comment tasks in the entity (add them as Java comments above the class):
+
+Why @Table(uniqueConstraints=...) and not @Column(unique=true)? Write a 2-sentence explanation.
+Why is the table named APP_USER and not user? Write the answer from the perspective of PostgreSQL. Hint: recall what the teacher said about user being a reserved keyword.
+
+DTOs 5-1. SignupRequest — a record in package com.securevault.dto The record has four components: username, password, fullName, age. Validation rules that must be applied to each component: username: • Must not be null, empty, or whitespace • Length between 5 and 20 • Must match the regex [a-zA-Z0-9_]+ (alphanumeric plus underscore only) password: • Must not be null, empty, or whitespace • Length between 8 and 72
+
+
+
+
+Must contain only printable ASCII characters — regex [\x20-\x7E]+
+• Provide a custom error message: "Password must contain printable ASCII characters"
+fullName:
+• Must not be null, empty, or whitespace
+• Max length 100
+age:
+• Minimum value: 0
+• Maximum value: 120
+
+5-2. UserResponse — a record in package com.securevault.dto
+The record has four components: id, username, fullName, age.
+Add a one-sentence Java comment above UserResponse explaining why we use a separate response DTO instead of
+returning the entity
